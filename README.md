@@ -92,7 +92,7 @@ Under these conditions, our protocol **achieves 95-96 Mb/s throughput on jumbo f
 - **Topology**:
   - EC2 Server (Receiver)
   - EC2 Client (Sender)
-  - EC2 Router (Ubuntu/Debian) with `ip_forward=1`
+  - EC2 Router (Ubuntu/Debian)
 - **Router Configuration**:
   - Traffic shaping via `tc`/`netem` for bandwidth, delay, and loss.
   - MTU adjustment (1500/9001).
