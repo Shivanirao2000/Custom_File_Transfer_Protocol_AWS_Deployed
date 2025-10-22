@@ -12,8 +12,6 @@
 5. [Implementation](#implementation)
 6. [AWS Deployment](#aws-deployment)
 7. [Testing & Results](#testing--results)
-8. [Usage](#usage)
-9. [References](#references)
 
 ---
 
