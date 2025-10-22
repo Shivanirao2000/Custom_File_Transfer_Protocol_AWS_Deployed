@@ -11,7 +11,7 @@ The goal was to **reliably transfer a 1 GB file** between client and server acro
 ## ⚙️ Motivation
 
 Traditional TCP struggles under high latency and loss due to congestion control and retransmission delays, often falling below 20 Mbps. UDP, on the other hand, provides raw speed but lacks reliability.  
-Our custom protocol bridges this gap — combining **UDP’s speed** with **application-level reliability** and **adaptive flow control** — to outperform TCP in lossy and delayed networks.
+Our custom protocol bridges this gap, combining **UDP’s speed** with **application-level reliability** and **adaptive flow control** to outperform TCP in lossy and delayed networks.
 
 ---
 
@@ -73,6 +73,6 @@ This modular packet design supports fast parsing and efficient retransmission.
 
 The application is divided into two Python scripts:
 
-- **`server.py`** — Receives the file, sends ACKs, verifies integrity.
-- **`client.py`** — Sends the file using the custom FRFTP protocol.
+- **`server.py`** - Receives the file, sends ACKs, verifies integrity.
+- **`client.py`** - Sends the file using the custom FRFTP protocol.
 
