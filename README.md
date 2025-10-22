@@ -16,7 +16,7 @@
 ---
 
 ## Overview
-This project implements a **custom UDP-based file transfer protocol** designed for high-throughput and reliability in adverse network conditions. Standard TCP suffers significantly under **high RTT and packet loss**, and UDP alone is unreliable. Our protocol ensures **reliable, high-speed delivery** by combining **UDP’s low overhead** with **application-layer reliability mechanisms**.
+This project implements a **custom UDP based file transfer protocol** designed for high-throughput and reliability in adverse network conditions. Standard TCP suffers significantly under **high RTT and packet loss**, and UDP alone is unreliable. Our protocol ensures **reliable, high-speed delivery** by combining **UDP’s low overhead** with **application-layer reliability mechanisms**.
 
 ---
 
@@ -39,12 +39,12 @@ Existing protocols have limitations in the tested network conditions:
 - Maintaining **bit-exact reliability** verified via MD5 checksums.
 
 **Target Network Conditions**:
-- RTT: 10–200 ms
-- Packet Loss: 0–20%
-- Link Rate: 80–100 Mb/s
+- RTT: 10-200 ms
+- Packet Loss: 0-20%
+- Link Rate: 80-100 Mb/s
 - MTUs: 1500 (standard) and 9001 (jumbo)
 
-Under these conditions, our protocol **achieves 95–96 Mb/s throughput on jumbo frames**, far outperforming TCP in high-latency/loss scenarios.
+Under these conditions, our protocol **achieves 95-96 Mb/s throughput on jumbo frames**, far outperforming TCP in high-latency/loss scenarios.
 
 ---
 
@@ -114,7 +114,7 @@ Under these conditions, our protocol **achieves 95–96 Mb/s throughput on jumbo
 | 3    | 9001 | 80               | 200ms| 0%   | 95.99               |
 
 **Insights**:
-- Jumbo frames (+71–75% speed-up) drastically reduce per-packet system overhead.
+- Jumbo frames (+71-75% speed-up) drastically reduce per-packet system overhead.
 - Reliability maintained under all loss/delay scenarios.
 - Throughput approaches path rate for MTU 9001 due to fewer packets/sec and reduced CPU/syscall work.
 
