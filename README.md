@@ -28,7 +28,7 @@ Existing protocols have limitations in the tested network conditions:
   - Maximum throughput drops far below the link capacity (~80 Mb/s not achievable at 20% packet loss, 200 ms RTT).
 
 - **UDP**
-  - Lightweight, high-speed, but **unreliable**—packets can be lost, duplicated, or delivered out-of-order.
+  - Lightweight, high-speed, but **unreliable** packets can be lost, duplicated, or delivered out-of-order.
   - No built-in flow control, making it unsuitable for large file transfers without extra reliability mechanisms.
 
 **Our custom protocol improves performance under these conditions** by:
