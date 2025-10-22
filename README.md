@@ -1,78 +1,122 @@
-# Custom_Designed_Fast_and_Reliable_File_Transfer_Protocol
+# Custom Designed Fast and Reliable File Transfer Protocol
+  
+**Purpose:** High-performance, reliable 1 GB file transfer over lossy, delayed, and rate-limited links. Supports variable MTUs (1500 and 9001) and cloud deployment on AWS EC2.
+
+---
+
+## Table of Contents
+1. [Overview](#overview)
+2. [Motivation](#motivation)
+3. [Objectives](#objectives)
+4. [Protocol Design](#protocol-design)
+5. [Implementation](#implementation)
+6. [AWS Deployment](#aws-deployment)
+7. [Testing & Results](#testing--results)
+8. [Usage](#usage)
+9. [References](#references)
+
+---
 
 ## Overview
-
-This project implements a **custom high-performance file transfer protocol** built over UDP, designed to achieve **TCP-like reliability** with **significantly higher throughput** under high latency and packet loss environments.  
-
-The goal was to **reliably transfer a 1 GB file** between client and server across different network conditions and MTU sizes (1500 and 9001 bytes), maintaining data integrity verified via **MD5 checksum** while achieving the **fastest possible transfer rate**.
+This project implements a **custom UDP-based file transfer protocol** designed for high-throughput and reliability in adverse network conditions. Standard TCP suffers significantly under **high RTT and packet loss**, and UDP alone is unreliable. Our protocol ensures **reliable, high-speed delivery** by combining **UDP’s low overhead** with **application-layer reliability mechanisms**.
 
 ---
 
-## ⚙️ Motivation
+## Motivation
+Existing protocols have limitations in the tested network conditions:
 
-Traditional TCP struggles under high latency and loss due to congestion control and retransmission delays, often falling below 20 Mbps. UDP, on the other hand, provides raw speed but lacks reliability.  
-Our custom protocol bridges this gap, combining **UDP’s speed** with **application-level reliability** and **adaptive flow control** to outperform TCP in lossy and delayed networks.
+- **TCP**
+  - Performs poorly on high-latency, high-loss links due to congestion control and retransmission overhead.
+  - Maximum throughput drops far below the link capacity (~80 Mb/s not achievable at 20% packet loss, 200 ms RTT).
 
----
+- **UDP**
+  - Lightweight, high-speed, but **unreliable**—packets can be lost, duplicated, or delivered out-of-order.
+  - No built-in flow control, making it unsuitable for large file transfers without extra reliability mechanisms.
 
-## 🧠 Protocol Design
+**Our custom protocol improves performance under these conditions** by:
+- Using **UDP** as the transport for minimal header and kernel overhead.
+- Implementing **selective retransmissions** via cumulative + selective ACKs to avoid unnecessary retransmits.
+- Utilizing **zero-copy send** for CPU efficiency.
+- Supporting **variable MTUs**, including jumbo frames (9001 B) for high throughput.
+- Maintaining **bit-exact reliability** verified via MD5 checksums.
 
-Our **Fast and Reliable File Transfer Protocol (FRFTP)** is built upon UDP with custom layers ensuring:
+**Target Network Conditions**:
+- RTT: 10–200 ms
+- Packet Loss: 0–20%
+- Link Rate: 80–100 Mb/s
+- MTUs: 1500 (standard) and 9001 (jumbo)
 
-### 1. **Reliability Layer**
-- Implements **Selective Repeat ARQ (Automatic Repeat Request)**.
-- Packets are numbered using a **32-bit sequence number**, allowing out-of-order arrivals.
-- Lost packets are detected through **ACK timeouts** and retransmitted individually.
-- Ensures full reliability without retransmitting entire windows.
-
-### 2. **Congestion and Flow Control**
-- **Dynamic Sliding Window**: Adjusts window size based on real-time acknowledgment feedback.
-- **Adaptive Timeout**: Timeout intervals are dynamically tuned using **RTT estimation**.
-- **Loss-aware rate control**: Reduces send rate only when multiple consecutive losses occur to avoid overreaction.
-
-### 3. **Packet Structure**
-Each UDP datagram is structured as:
-
-| Field | Size | Description |
-|-------|------|-------------|
-| Header | 12 bytes | Contains sequence number, flags (ACK/DATA), checksum |
-| Payload | Variable | File data chunk |
-| Checksum | 4 bytes | Ensures integrity of data |
-
-This modular packet design supports fast parsing and efficient retransmission.
+Under these conditions, our protocol **achieves 95–96 Mb/s throughput on jumbo frames**, far outperforming TCP in high-latency/loss scenarios.
 
 ---
 
-## 🧩 Data Structures
-
-| Component | Description |
-|------------|-------------|
-| **Send Buffer (Dictionary)** | Holds packets awaiting acknowledgment, keyed by sequence number |
-| **Receive Buffer (Dictionary)** | Temporarily stores out-of-order packets until sequence completion |
-| **ACK Tracker (Set)** | Tracks acknowledged sequence numbers to prevent duplicate retransmissions |
-| **Window Manager** | Dynamically adjusts the sending window size based on ACK density and network feedback |
+## Objectives
+- Achieve **bit-exact file transfer** verified via MD5.
+- Evaluate performance under:
+  - Three link configurations with varying bandwidth, RTT, and packet loss.
+  - Two MTU sizes: 1500 and 9001 (jumbo frames).
+- Deploy and test on **AWS EC2 nodes** replicating the same link conditions.
 
 ---
 
-## 🔄 Algorithm Flow
-
-### Sender (Client)
-1. Read file in chunks and encapsulate data packets with headers.
-2. Transmit packets continuously within the allowed window.
-3. Wait for ACKs; upon timeout, selectively retransmit missing packets.
-4. Upon completion, send a “FIN” packet to indicate end of transmission.
-
-### Receiver (Server)
-1. Receive packets and send ACKs for successfully received sequence numbers.
-2. Store packets in order and reassemble the complete file.
-3. Compute **MD5 checksum** to verify data integrity.
+## Protocol Design
+- **Packet Types**: `START`, `DATA`, `ACK`, `END`.
+- **Headers**: 7 bytes (type/flags + seq32 + len16).
+- **Reliability**:
+  - Sliding window of outstanding segments.
+  - Cumulative ACK + Selective ACK (up to K SACK blocks).
+  - Per-segment retransmission with exponential backoff.
+- **Zero-Copy Transmission**:
+  - Linux `SO_ZEROCOPY` + `sendmsg(..., MSG_ZEROCOPY)` for efficient DMA-based transfers.
+- **Payloads**:
+  - MTU 1500 → ~1465 B
+  - MTU 9001 → ~8966 B
 
 ---
 
-## 🧮 Implementation Summary
+## Implementation
+- **Languages**: C (POSIX sockets)
+- **Files**:
+  - `Client/udp_sender_lab.c`
+  - `Server/udp_receiver_lab.c`
+- **Dependencies**: gcc, make, Linux kernel ≥ 4.14 (for zero-copy)
+- **Control Flow**:
+  1. Sender sends `START` packet.
+  2. Receiver ACKs with optional SACK blocks.
+  3. Sender streams `DATA` packets.
+  4. Receiver maintains gap map and sends cumulative + selective ACKs.
+  5. `END` packet signals transfer completion.
+- **Integrity Check**: `md5sum` at sender and receiver.
 
-The application is divided into two Python scripts:
+---
 
-- **`server.py`** - Receives the file, sends ACKs, verifies integrity.
-- **`client.py`** - Sends the file using the custom FRFTP protocol.
+## AWS Deployment
+- **Topology**:
+  - EC2 Server (Receiver)
+  - EC2 Client (Sender)
+  - EC2 Router (Ubuntu/Debian) with `ip_forward=1`
+- **Router Configuration**:
+  - Traffic shaping via `tc`/`netem` for bandwidth, delay, and loss.
+  - MTU adjustment (1500/9001).
+- **Deployment Scripts**:
+  - `AWS/setup_ec2.sh`
+  - `AWS/setup_router.sh`
+- **Instructions**: See `AWS/deploy_instructions.md`
+
+---
+
+## Testing & Results
+| Case | MTU  | Router Rate (Mb/s) | RTT  | Loss | Avg Throughput (Mb/s) |
+|------|------|------------------|------|------|---------------------|
+| 1    | 1500 | 100              | 10ms | 1%   | 55.78               |
+| 1    | 9001 | 100              | 10ms | 1%   | 95.28               |
+| 2    | 1500 | 100              | 200ms| 20%  | 55.13               |
+| 2    | 9001 | 100              | 200ms| 20%  | 95.50               |
+| 3    | 1500 | 80               | 200ms| 0%   | 54.72               |
+| 3    | 9001 | 80               | 200ms| 0%   | 95.99               |
+
+**Insights**:
+- Jumbo frames (+71–75% speed-up) drastically reduce per-packet system overhead.
+- Reliability maintained under all loss/delay scenarios.
+- Throughput approaches path rate for MTU 9001 due to fewer packets/sec and reduced CPU/syscall work.
 
